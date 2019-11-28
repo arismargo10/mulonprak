@@ -79,15 +79,15 @@ audio {
 
       analyser.getByteFrequencyData(dataArray);
 
-      ctx.fillStyle = "#00008B";
+      ctx.fillStyle = "#87CEFA";
       ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
       for (var i = 0; i < bufferLength; i++) {
         barHeight = dataArray[i];
         
         var r = barHeight + (25 * (i/bufferLength));
-        var g = 250 * (i/bufferLength);
-        var b = 50;
+        var g = 100 * (i/bufferLength);
+        var b = 0;
 
         ctx.fillStyle = "rgb(" + r + "," + g + "," + b + ")";
         ctx.fillRect(x, HEIGHT - barHeight, barWidth, barHeight);
