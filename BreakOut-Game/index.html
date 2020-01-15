@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset="utf-8">
+	<title>Simple Game - Canvas HTML</title>
+	<link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Germania+One">
+	<style type="text/css">
+		* {
+			font-family: "Germania One";
+		}
+
+		canvas {
+			border: 1px solid black;
+		}
+
+		#sound {
+			width: 30px;
+			height: 30px;
+			cursor: pointer;
+			position: absolute;
+			top: 465px;
+			left: 15px;
+		}
+
+		#gameover {
+			position: absolute;
+			width: 400px;
+			height: 500px;
+			background: rgba(0, 0, 0, 0.5);
+			display: none;
+		}
+
+		#youwon {
+			width: 100px;
+			position: absolute;
+			top: 200px;
+			left: 150px;
+			display: none;
+		}
+
+		#youlose {
+			width: 400px;
+			position: absolute;
+			top: 100px;
+			left: 0px;
+			display: none;
+		}
+
+		#restart {
+			position: absolute;
+			top: 310px;
+			left: 155px;
+			cursor: pointer;
+			font-size: 1.25em;
+			color: #FFF;
+		}
+	</style>
+</head>
+
+<body>
+	<div class="sound">
+		<img src="img/SOUND_ON.png" alt="" id="sound">
+	</div>
+
+	<div id="gameover">
+		<img src="img/youwon.png" alt="" id="youwon">
+		<img src="img/gameover.png" alt="" id="youlose">
+		<div id="restart">Play Again!</div>
+	</div>
+
+	<canvas id="myCanvas" width="400" height="500"></canvas>
+	<script type="text/javascript">
+		var cvs = document.getElementById('myCanvas');
+		var ctx = cvs.getContext('2d');
+
+		//gambar
+		var bg_img = new Image();
+		bg_img.src = "img/bg.jpg";
+
+		var level_img = new Image();
+		level_img.src = "img/level.png";
+
+		var life_img = new Image();
+		life_img.src = "img/life.png";
+
+		var score_img = new Image();
+		score_img.src = "img/score.png";
+
+		//suara
+		var wall_hit = new Audio();
+		wall_hit.src = "sounds/wall.mp3";
+
+		var life_lost = new Audio();
+		life_lost.src = "sounds/life_lost.mp3";
+
+		var paddle_hit = new Audio();
+		paddle_hit.src = "sounds/paddle_hit.mp3";
+
+		var win = new Audio();
+		win.src = "sounds/win.mp3";
+
+		var brick_hit = new Audio();
+		brick_hit.src = "sounds/brick_hit.mp3";
+
+		//deskripsi
+		var paddle_width = 100;
+		var paddle_height = 20;
+		var paddle_margin_bottom = 50;
+		var ball_radius = 8;
+		var LIFE = 3; //punya tiga nyawa
+		var SCORE = 0;
+		var SCORE_UNIT = 10;
+		var LEVEL = 1;
+		var MAX_LEVEL = 3;
+		var GAME_OVER = false;
+		var leftArrow = false;
+		var rightArrow = false;
+
+		//buat paddle
+		var paddle = {
+			x: cvs.width / 2 - paddle_width / 2,
+			y: cvs.height - paddle_margin_bottom - paddle_height,
+			width: paddle_width,
+			height: paddle_height,
+			dx: 5
+		}
+
+		ctx.lineWidth = 3;
+
+		function drawPaddle() {
+			ctx.fillStyle = "black";
+			ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
+			ctx.strokeStyle = "darkorange";
+			ctx.strokeRect(paddle.x, paddle.y, paddle.width, paddle.height);
+		}
+
+		//control paddle dgn keyboard
+		document.addEventListener("keydown", function (event) {
+			if (event.keyCode == 37) {
+				leftArrow = true;
+			} else if (event.keyCode == 39) {
+				rightArrow = true;
+			}
+		});
+		document.addEventListener("keyup", function (event) {
+			if (event.keyCode == 37) {
+				leftArrow = false;
+			} else if (event.keyCode == 39) {
+				rightArrow = false;
+			}
+		});
+
+		//pergerakan paddle
+		function movePaddle() {
+			if (rightArrow && paddle.x + paddle.width < cvs.width) {
+				paddle.x += paddle.dx;
+			} else if (leftArrow && paddle.x > 0) {
+				paddle.x -= paddle.dx;
+			}
+		}
+
+		//buat bola
+		var ball = {
+			x: cvs.width / 2,
+			y: paddle.y - ball_radius,
+			radius: ball_radius,
+			speed: 4,
+			dx: 3 * (Math.random() * 2 - 1),
+			dy: -3
+		}
+
+		function drawBall() {
+			ctx.beginPath();
+			ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+			ctx.fillStyle = "orange";
+			ctx.fill();
+			ctx.strokeStyle = "black";
+			ctx.stroke();
+			ctx.closePath();
+		}
+
+		//pergerakan bola
+		function moveBall() {
+			ball.x += ball.dx;
+			ball.y += ball.dy;
+		}
+
+		//collison bola dengan batas batas canvas
+		function ballWallCollision() {
+			//batas kanan
+			if (ball.x + ball.radius > cvs.width) {
+				ball.dx = -ball.dx;
+				wall_hit.play();
+			}
+			//batas atas
+			if (ball.y - ball.radius < 0) {
+				ball.dy = -ball.dy;
+				wall_hit.play();
+			}
+			//batas kiri
+			if (ball.x - ball.radius < 0) {
+				ball.dx = -ball.dx;
+				wall_hit.play();
+			}
+			//batas bawah
+			if (ball.y + ball.radius > cvs.height) {
+				LIFE--; //kehilangan nyawa
+				life_lost.play();
+				resetBall();
+			}
+		}
+
+		//collison bola dengan paddle
+		function ballPaddleCollision() {
+			if (ball.x < paddle.x + paddle.width &&
+				ball.x > paddle.x &&
+				paddle.y < paddle.y + paddle_height &&
+				ball.y + ball.radius > paddle.y) {
+
+				paddle_hit.play();
+
+				let collidePoint = ball.x - (paddle.x + paddle.width / 2);
+
+				collidePoint = collidePoint / (paddle.width / 2);
+
+				let angle = collidePoint * Math.PI / 3;
+
+				ball.dx = ball.speed * Math.sin(angle);
+				ball.dy = -ball.speed * Math.cos(angle);
+			}
+		}
+
+		function resetBall() {
+			ball.x = cvs.width / 2;
+			ball.y = paddle.y - ball_radius;
+			ball.dx = 3 * (Math.random() * 2 - 1);
+			ball.dy = -3;
+		}
+
+		// membuat bricks
+		var brick = {
+			row: 1,
+			column: 5,
+			width: 55,
+			height: 20,
+			offSetLeft: 20,
+			offSetTop: 20,
+			marginTop: 40,
+			fillColor: "black",
+			strokeColor: "white"
+		}
+
+		let bricks = [];
+
+		function createBricks() {
+			for (let r = 0; r < brick.row; r++) {
+				bricks[r] = [];
+				for (let c = 0; c < brick.column; c++) {
+					bricks[r][c] = {
+						x: c * (brick.offSetLeft + brick.width) + brick.offSetLeft,
+						y: r * (brick.offSetTop + brick.height) + brick.offSetTop + brick.marginTop,
+						status: true
+					}
+				}
+			}
+		}
+
+		createBricks();
+
+		// menggambar bricks
+		function drawBricks() {
+			for (let r = 0; r < brick.row; r++) {
+				for (let c = 0; c < brick.column; c++) {
+					let b = bricks[r][c];
+					// if the brick isn't broken
+					if (b.status) {
+						ctx.fillStyle = brick.fillColor;
+						ctx.fillRect(b.x, b.y, brick.width, brick.height);
+
+						ctx.strokeStyle = brick.strokeColor;
+						ctx.strokeRect(b.x, b.y, brick.width, brick.height);
+					}
+				}
+			}
+		}
+
+		// ball brick collision
+		function ballBrickCollision() {
+			for (let r = 0; r < brick.row; r++) {
+				for (let c = 0; c < brick.column; c++) {
+					let b = bricks[r][c];
+					// if the brick isn't broken
+					if (b.status) {
+						if (ball.x + ball.radius > b.x && ball.x - ball.radius < b.x + brick.width && ball.y + ball.radius >
+							b
+							.y && ball.y - ball.radius < b.y + brick.height) {
+							brick_hit.play();
+							ball.dy = -ball.dy;
+							b.status = false; // the brick is broken
+							SCORE += SCORE_UNIT;
+						}
+					}
+				}
+			}
+		}
+
+		//menampilkan status game
+		function showGameStats(text, textX, textY, img, imgX, imgY) {
+			// text
+			ctx.fillStyle = "white";
+			ctx.font = "25px Germania One";
+			ctx.fillText(text, textX, textY);
+
+			// image
+			ctx.drawImage(img, imgX, imgY, width = 25, height = 25);
+		}
+
+		//membuat gambar
+		function draw() {
+			drawPaddle();
+			drawBall();
+			drawBricks();
+			//score
+			showGameStats(SCORE, 35, 25, score_img, 5, 5)
+			//lives
+			showGameStats(LIFE, cvs.width - 35, 25, life_img, cvs.width - 65, 5)
+			//level
+			showGameStats(LEVEL, cvs.width / 2, 25, level_img, cvs.width / 2 - 30, 5)
+		}
+
+		// game over
+		function gameOver() {
+			if (LIFE <= 0) {
+				showYouLose();
+				GAME_OVER = true;
+			}
+		}
+
+		function levelUp() {
+			let isLevelDone = true;
+
+			// check if all the bricks are broken
+			for (let r = 0; r < brick.row; r++) {
+				for (let c = 0; c < brick.column; c++) {
+					isLevelDone = isLevelDone && !bricks[r][c].status;
+				}
+			}
+
+			if (isLevelDone) {
+				win.play();
+
+				if (LEVEL >= MAX_LEVEL) {
+					showYouWin();
+					GAME_OVER = true;
+					return;
+				}
+				brick.row++;
+				createBricks();
+				ball.speed += 0.5;
+				resetBall();
+				LEVEL++;
+			}
+		}
+
+		//update game
+		function update() {
+			movePaddle();
+			moveBall();
+			ballWallCollision();
+			ballPaddleCollision();
+			ballBrickCollision();
+			gameOver();
+			levelUp();
+		}
+
+		//loop
+		function loop() {
+			ctx.drawImage(bg_img, 0, 0);
+			draw();
+			update();
+			if (!GAME_OVER) {
+				requestAnimationFrame(loop);
+			}
+		}
+		loop();
+
+		// SELECT SOUND ELEMENT
+		const soundElement = document.getElementById("sound");
+
+		soundElement.addEventListener("click", audioManager);
+
+		function audioManager() {
+			// CHANGE IMAGE SOUND_ON/OFF
+			let imgSrc = soundElement.getAttribute("src");
+			let SOUND_IMG = imgSrc == "img/SOUND_ON.png" ? "img/SOUND_OFF.png" : "img/SOUND_ON.png";
+
+			soundElement.setAttribute("src", SOUND_IMG);
+
+			// MUTE AND UNMUTE SOUNDS
+			wall_hit.muted = wall_hit.muted ? false : true;
+			paddle_hit.muted = paddle_hit.muted ? false : true;
+			brick_hit.muted = brick_hit.muted ? false : true;
+			win.muted = win.muted ? false : true;
+			life_lost.muted = life_lost.muted ? false : true;
+		}
+
+		// SHOW GAME OVER MESSAGE
+		/* SELECT ELEMENTS */
+		const gameover = document.getElementById("gameover");
+		const youwin = document.getElementById("youwin");
+		const youlose = document.getElementById("youlose");
+		const restart = document.getElementById("restart");
+
+		// CLICK ON PLAY AGAIN BUTTON
+		restart.addEventListener("click", function () {
+			location.reload(); // reload the page
+		})
+
+		// SHOW YOU WIN
+		function showYouWin() {
+			gameover.style.display = "block";
+			youwon.style.display = "block";
+		}
+
+		// SHOW YOU LOSE
+		function showYouLose() {
+			gameover.style.display = "block";
+			youlose.style.display = "block";
+		}
+	</script>
+</body>
+
+</html>
