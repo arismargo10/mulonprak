@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>Simple Game - Canvas HTML</title>
+	<style type="text/css">
+		canvas{
+			border : 1px solid black;
+		}
+	</style>
+</head>
+<body>
+	<canvas id="myCanvas" width="400" height="500"></canvas>
+	<script type="text/javascript">
+		var cvs = document.getElementById('myCanvas');
+		var ctx = cvs.getContext('2d');
+
+		//background
+		var bg_img = new Image();
+		bg_img.src = "bg.jpg";
+
+		//deskripsi
+		var paddle_width = 100;
+		var paddle_height = 20;
+		var paddle_margin_bottom = 50;
+		var ball_radius = 8;
+		var LIFE = 3; //punya tiga nyawa
+		var leftArrow = false;
+		var rightArrow = false;
+
+		//buat paddle
+		var paddle = {
+			x : cvs.width/2 - paddle_width/2,
+			y : cvs.height - paddle_margin_bottom - paddle_height,
+			width : paddle_width,
+			height : paddle_height,
+			dx : 5
+		}
+		
+		ctx.lineWidth = 3;
+		function drawPaddle(){
+			ctx.fillStyle = "black";
+			ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
+			ctx.strokeStyle="white";
+			ctx.strokeRect(paddle.x, paddle.y, paddle.width, paddle.height);
+		}
+
+		//control paddle dgn keyboard
+		document.addEventListener("keydown", function(event){
+			if(event.keyCode == 37){
+				leftArrow = true;
+			}else if(event.keyCode == 39){
+				rightArrow = true;
+			}
+		});
+		document.addEventListener("keyup", function(event){
+			if(event.keyCode == 37){
+				leftArrow = false;
+			}else if(event.keyCode == 39){
+				rightArrow = false;
+			}
+		});
+
+		//pergerakan paddle
+		function movePaddle(){
+			if(rightArrow && paddle.x + paddle.width < cvs.width){
+				paddle.x += paddle.dx;
+			}else if(leftArrow && paddle.x > 0){
+				paddle.x -= paddle.dx;
+			}
+		}
+
+		//buat bola
+		var ball = {
+			x : cvs.width/2,
+			y : paddle.y - ball_radius,
+			radius : ball_radius,
+			speed : 4,
+			dx : 3 * (Math.random() * 2 - 1),
+			dy : -3
+		}
+
+		function drawBall(){
+			ctx.beginPath();
+			ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI*2);
+			ctx.fillStyle="orange";
+			ctx.fill();
+			ctx.strokeStyle="black";
+			ctx.stroke();
+			ctx.closePath();
+		}
+
+		//pergerakan bola
+		function moveBall(){
+			ball.x += ball.dx;
+			ball.y += ball.dy;
+		}
+
+		//collison bola dengan batas batas canvas
+		function ballWallCollision(){
+			//batas kanan
+			if(ball.x + ball.radius > cvs.width){
+				ball.dx = - ball.dx;
+			}
+			//batas atas
+			if(ball.y - ball.radius < 0){
+				ball.dy = - ball.dy;
+			}
+			//batas kiri
+			if(ball.x - ball.radius < 0){
+				ball.dx = - ball.dx;
+			}
+			//batas bawah
+			if(ball.y + ball.radius > cvs.height){
+				LIFE--;//kehilangan nyawa
+				resetBall();
+			}
+		}
+
+		//collison bola dengan paddle
+		function ballPaddleCollision(){
+			if(ball.x < paddle.x + paddle.width && 
+				ball.x > paddle.x &&
+				paddle.y < paddle.y + paddle_height &&
+				ball.y + ball.radius > paddle.y){
+
+				let collidePoint = ball.x - (paddle.x + paddle.width/2);
+
+				collidePoint = collidePoint / (paddle.width/2);
+
+				let angle = collidePoint * Math.PI/3;
+
+				ball.dx = ball.speed * Math.sin(angle);
+				ball.dy = - ball.speed * Math.cos(angle);
+			}
+		}
+
+		function resetBall(){
+			ball.x = cvs.width/2;
+			ball.y = paddle.y - ball_radius;
+			ball.dx = 3 * (Math.random() * 2 - 1);
+			ball.dy = -3;
+		}
+
+		//membuat gambar
+		function draw(){
+			drawPaddle();
+			drawBall();
+		}
+
+		//update game
+		function update(){
+			movePaddle();
+			moveBall();
+			ballWallCollision();
+			ballPaddleCollision();
+		}
+
+		//loop
+		function loop(){
+			ctx.drawImage(bg_img, 0, 0);
+			draw();
+			update();
+			requestAnimationFrame(loop);
+		}
+		loop();
+	</script>
+</body>
+</html>
